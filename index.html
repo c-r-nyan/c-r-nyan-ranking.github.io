@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D表彰台（王冠固定＋自動順位＋動く光）</title>
+<style>
+:root{
+  --bg:#081123;
+  --accent-1:#ffd86b;
+  --accent-2:#7fc7ff;
+  --accent-3:#ff9eb3;
+  --stone:#2b2f33;
+}
+
+/* ===== ベース ===== */
+html,body{
+  height:100%;
+  margin:0;
+  background:radial-gradient(1500px 800px at 10% 10%,rgba(12,30,46,0.6),transparent 10%),
+             linear-gradient(180deg,var(--bg) 0%,#021017 60%);
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+  overflow:hidden;
+  font-family:"Noto Sans JP","Helvetica Neue",sans-serif;
+  color:#fff;
+}
+
+/* ===== ステージ全体 ===== */
+.stage{
+  position:relative;
+  width:90vw;
+  height:70vh;
+  perspective:2000px;
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+  overflow:hidden;
+}
+
+/* ===== 光の魔法陣（床＋動く光） ===== */
+.stage::after{
+  content:"";
+  position:absolute;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:70vw;
+  height:20vh;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,0.4) 0%,transparent 70%);
+  filter:blur(30px);
+  animation:pulse 3s infinite ease-in-out;
+  z-index:0;
+}
+@keyframes pulse{
+  0%,100%{opacity:0.7;transform:translateX(-50%) scale(1);}
+  50%{opacity:1;transform:translateX(-50%) scale(1.1);}
+}
+
+/* 動く光（全体に） */
+#magic-light {
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ===== 各表彰台 ===== */
+.podium{
+  position:relative;
+  background:linear-gradient(180deg,var(--stone) 0%,#111 100%);
+  border:2px solid rgba(255,255,255,0.15);
+  box-shadow:0 0 30px rgba(0,0,0,0.6);
+  transform-style:preserve-3d;
+  margin:0 3vw;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  transition:transform 0.6s, height 0.6s, width 0.6s, background 0.6s;
+}
+
+/* 高さと幅（順位ごと） */
+.podium.first{height:40vh;width:20vw;z-index:3;}
+.podium.second{height:28vh;width:18vw;z-index:2;}
+.podium.third{height:22vh;width:16vw;z-index:1;}
+
+/* 色分け */
+.podium.first{background:linear-gradient(180deg,var(--accent-1) 0%,#8a6b00 100%);}
+.podium.second{background:linear-gradient(180deg,var(--accent-2) 0%,#004977 100%);}
+.podium.third{background:linear-gradient(180deg,var(--accent-3) 0%,#7a002b 100%);}
+
+/* ===== 名前・スコア部分 ===== */
+.player-info{
+  position:absolute;
+  bottom:100%;
+  left:50%;
+  transform:translateX(-50%) translateY(-2vh);
+  text-align:center;
+}
+
+.player-name, .player-score{
+  display:block;
+  font-size:2.5vh;
+  margin:0.3em 0;
+  background:rgba(0,0,0,0.4);
+  padding:0.3em 0.8em;
+  border-radius:0.4em;
+  cursor:text;
+  min-width:8em;
+}
+
+/* 編集時スタイル */
+.player-name[contenteditable="true"]:focus,
+.player-score[contenteditable="true"]:focus{
+  outline:2px solid #fff;
+  background:rgba(255,255,255,0.2);
+}
+
+/* ===== 王冠（常に中央） ===== */
+.crown{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%) translateY(-48vh);
+  font-size:8vh;
+  text-shadow:0 0 30px gold;
+  animation:shine 2s infinite alternate;
+  pointer-events:none;
+  z-index:1;
+}
+@keyframes shine{
+  from{text-shadow:0 0 10px gold;}
+  to{text-shadow:0 0 40px #fff98b;}
+}
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <!-- 動く光 -->
+  <div id="magic-light"></div>
+
+  <!-- 👑 王冠（常に中央固定） -->
+  <div class="crown">👑</div>
+
+  <div class="podium second">
+    <div class="player-info">
+      <span class="player-name" contenteditable="true">PLAYER 2</span>
+      <span class="player-score" contenteditable="true">80pt</span>
+    </div>
+  </div>
+
+  <div class="podium first">
+    <div class="player-info">
+      <span class="player-name" contenteditable="true">PLAYER 1</span>
+      <span class="player-score" contenteditable="true">100pt</span>
+    </div>
+  </div>
+
+  <div class="podium third">
+    <div class="player-info">
+      <span class="player-name" contenteditable="true">PLAYER 3</span>
+      <span class="player-score" contenteditable="true">50pt</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 動く光用 =====
+let lightProgress = 0;
+const light = "rgba(255,255,255,0.3)";
+const lightEl = document.getElementById("magic-light");
+
+function updateLight(){
+  const sin = Math.sin(lightProgress);
+  lightEl.style.background = `
+    conic-gradient(from ${40 * sin}deg at 10% -10%, ${light}),
+    conic-gradient(from ${-40 * sin}deg at 90% -10%, ${light})
+  `;
+  lightProgress += 0.02;
+  requestAnimationFrame(updateLight);
+}
+updateLight();
+
+// ===== スコア整形 + 自動順位入れ替え =====
+function normalizeScore(el){
+  let text = el.textContent.trim();
+  const digits = text.replace(/[^0-9]/g, "");
+  if(digits){
+    const clean = String(parseInt(digits,10));
+    el.textContent = clean + "pt";
+    return parseInt(clean,10);
+  }else{
+    el.textContent = "";
+    return 0;
+  }
+}
+
+function reorderPodiums(){
+  const stage = document.getElementById("stage");
+  const podiums = Array.from(stage.querySelectorAll(".podium"));
+
+  const data = podiums.map(p=>{
+    const nameEl = p.querySelector(".player-name");
+    const scoreEl = p.querySelector(".player-score");
+    const score = normalizeScore(scoreEl);
+    return {podium:p, name:nameEl.textContent, scoreEl, score};
+  });
+
+  data.sort((a,b)=>b.score - a.score);
+
+  podiums.forEach(p=>p.classList.remove("first","second","third"));
+
+  for(let i=0;i<data.length;i++){
+    if(i>0 && data[i].score === data[i-1].score){
+      data[i].podium.style.height = data[i-1].podium.style.height;
+      data[i].podium.classList.add(data[i-1].podium.classList.contains("first") ? "first" :
+                                   data[i-1].podium.classList.contains("second") ? "second" : "third");
+    } else {
+      const cls = i===0 ? "first" : i===1 ? "second" : "third";
+      data[i].podium.classList.add(cls);
+      data[i].podium.style.height = cls==="first"?"40vh":cls==="second"?"28vh":"22vh";
+    }
+  }
+
+  stage.querySelectorAll(".podium").forEach(p=>p.remove());
+  const crown = stage.querySelector(".crown");
+  stage.appendChild(crown);
+  stage.appendChild(data[1].podium);
+  stage.appendChild(data[0].podium);
+  stage.appendChild(data[2].podium);
+}
+
+document.querySelectorAll('.player-score, .player-name').forEach(el=>{
+  el.addEventListener('keypress',e=>{
+    if(e.key==="Enter"){
+      e.preventDefault();
+      el.blur();
+    }
+  });
+  el.addEventListener('blur',()=>{
+    if(el.classList.contains('player-score')){
+      normalizeScore(el);
+    }
+    reorderPodiums();
+  });
+});
+
+// 初期並び替え
+reorderPodiums();
+</script>
+
+</body>
+</html>
